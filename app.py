@@ -1,41 +1,66 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import requests
+from datetime import datetime
 
-# Título e información
-st.set_page_config(page_title="💼 Control de Gastos", layout="wide")
-st.title("💼 Sistema de Control de Gastos")
-st.markdown("Conectado a Firebase Firestore mediante API REST")
+# Configuración
+FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json "
 
-# Firebase config - desde secrets.toml o variables de entorno
-FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
-#API_KEY = st.secrets["API_KEY"]
-
-# Función para obtener datos
+# Función para obtener gastos desde Firebase Realtime Database
 @st.cache_data
 def get_gastos():
     try:
-        response = requests.get(f"{FIREBASE_URL}")
+        response = requests.get(FIREBASE_URL)
         if response.status_code != 200:
-            st.error("Error al conectarse a Firebase.")
+            st.error("❌ Error al conectarse a Firebase.")
             return pd.DataFrame()
 
-        data = response.json().get("documents", [])
-        parsed = []
-        for doc in data:
-            fields = doc.get("fields", {})
-            parsed.append({
-                "Nota": fields.get("nota", {}).get("stringValue", "Sin nota"),
-                "Categoría": fields.get("categoria", {}).get("stringValue", "Sin categoría"),
-                "Monto": float(fields.get("monto", {}).get("doubleValue", 0)),
-                "Fecha": fields.get("fecha", {}).get("timestampValue", "Sin fecha")
-            })
-        return pd.DataFrame(parsed)
-    except Exception as e:
-        st.error(f"No se pudieron cargar los gastos: {e}")
-        return pd.DataFrame()
+        data = response.json()
 
+        if not data:
+            st.warning("⚠️ No hay datos disponibles en Firebase.")
+            return pd.DataFrame()
+
+        # Aplanar el JSON (RTDB devuelve un objeto con claves únicas)
+        parsed = []
+        for key, value in data.items():
+            parsed.append({
+                "ID": key,
+                "Nota": value.get("nota", "Sin nota"),
+                "Categoría": value.get("categoria", "Sin categoría"),
+                "Monto": float(value.get("monto", 0)),
+                "FechaTexto": value.get("fecha", "Sin fecha")
+            })
+
+        df = pd.DataFrame(parsed)
+
+        # Convertir FechaTexto a datetime
+        def parse_fecha(fecha_str):
+            try:
+                return datetime.strptime(fecha_str, "%d %b %Y, %I:%M %p")
+            except Exception:
+                try:
+                    return datetime.strptime(fecha_str, "%d/%m/%Y")
+                except Exception:
+                    return pd.NaT  # Not a Time
+
+        df['Fecha'] = df['FechaTexto'].apply(parse_fecha)
+
+        # Eliminar filas con fecha inválida
+        df = df[df['Fecha'].notna()]
+
+        # Extraer información adicional
+        df['Año'] = df['Fecha'].dt.year
+        df['Mes'] = df['Fecha'].dt.month_name(locale='es_ES.UTF-8')  # Mes en español
+        df['DiaSemana'] = df['Fecha'].dt.day_name(locale='es_ES.UTF-8')  # Día de la semana
+        df['Dia'] = df['Fecha'].dt.day
+
+        return df[['ID', 'Nota', 'Categoría', 'Monto', 'FechaTexto', 'Fecha', 'Año', 'Mes', 'DiaSemana', 'Dia']]
+
+    except Exception as e:
+        st.error(f"❌ No se pudieron cargar los gastos: {e}")
+        return pd.DataFrame()
+        
 # Cargar datos
 df = get_gastos()
 
