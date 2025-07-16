@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 
 # Configuración
-FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json "
+FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
 
 # Función para obtener gastos desde Firebase Realtime Database
 @st.cache_data
