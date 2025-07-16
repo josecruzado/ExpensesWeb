@@ -110,10 +110,10 @@ datos = respuesta.json()
     if not df.empty:
         try:
             df["fecha"] = pd.to_datetime(df["fecha"], format="%d %b %Y, %I:%M %p")
-        except:
+        except ValueError:
             try:
                 df["fecha"] = pd.to_datetime(df["fecha"], format="%Y-%m-%d %H:%M:%S")
-            except:
+            except ValueError:
                 df["fecha"] = pd.to_datetime(df["fecha"], errors='coerce')
     
     return df.dropna(subset=["fecha"])
@@ -137,12 +137,18 @@ dias_periodo = (df['fecha'].max() - df['fecha'].min()).days
 if dias_periodo == 0:
     dias_periodo = 1
 
+categoria_mayor_gasto = df.groupby('categoria')['monto'].sum()
+if not categoria_mayor_gasto.empty:
+    categoria_mayor = categoria_mayor_gasto.idxmax()
+else:
+    categoria_mayor = "Sin categoría"
+
 stats = {
     'total_gastos': df['monto'].sum(),
     'promedio_diario': df['monto'].sum() / dias_periodo,
     'gasto_mayor': df['monto'].max(),
     'gasto_menor': df['monto'].min(),
-    'categoria_mayor': df.groupby('categoria')['monto'].sum().idxmax(),
+    'categoria_mayor': categoria_mayor,
     'total_transacciones': len(df),
     'promedio_por_transaccion': df['monto'].mean(),
     'mediana': df['monto'].median(),
@@ -366,6 +372,11 @@ st.sidebar.markdown(”#### 💵 Filtrar por Monto”)
 monto_min = float(df_gastos[“monto”].min())
 monto_max = float(df_gastos[“monto”].max())
 
+# Evitar error si min y max son iguales
+
+if monto_min == monto_max:
+monto_max += 1.0
+
 rango_montos = st.sidebar.slider(
 “Rango de montos”,
 min_value=monto_min,
@@ -436,6 +447,9 @@ with col4:
         help="Categoría con mayor gasto total"
     )
 ```
+
+else:
+st.info(“No hay datos que mostrar con los filtros seleccionados.”)
 
 # Insights automáticos
 
@@ -518,6 +532,9 @@ st.dataframe(
 # Resumen de la tabla
 st.caption(f"Mostrando {len(df_filtrado)} de {len(df_gastos)} transacciones totales")
 ```
+
+else:
+st.info(“No hay datos que mostrar con los filtros seleccionados.”)
 
 # Exportar datos
 
