@@ -6,24 +6,28 @@ from datetime import datetime
 # Configuración
 FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
 
-# Función para obtener gastos desde Firebase Realtime Database
 @st.cache_data
 def get_gastos():
     try:
+        # Paso 1: Hacer la petición
         response = requests.get(FIREBASE_URL)
+        
         if response.status_code != 200:
-            st.error("❌ Error al conectarse a Firebase.")
+            st.error(f"❌ Código HTTP {response.status_code} - Error al conectarse a Firebase.")
             return pd.DataFrame()
 
         data = response.json()
 
-        if not data:
-            st.warning("⚠️ No hay datos disponibles en Firebase.")
+        # Paso 2: Validar que haya datos
+        if not isinstance(data, dict) or not data:
+            st.warning("⚠️ No hay datos disponibles en Firebase o formato inválido.")
             return pd.DataFrame()
 
-        # Aplanar el JSON (RTDB devuelve un objeto con claves únicas)
+        # Paso 3: Parsear datos
         parsed = []
         for key, value in data.items():
+            if not isinstance(value, dict):  # Saltar elementos corruptos
+                continue
             parsed.append({
                 "ID": key,
                 "Nota": value.get("nota", "Sin nota"),
@@ -34,31 +38,33 @@ def get_gastos():
 
         df = pd.DataFrame(parsed)
 
-        # Convertir FechaTexto a datetime
+        if df.empty:
+            st.warning("⚠️ Los datos descargados están vacíos.")
+            return df
+
+        # Paso 4: Parsear fechas
         def parse_fecha(fecha_str):
             try:
                 return datetime.strptime(fecha_str, "%d %b %Y, %I:%M %p")
-            except Exception:
+            except ValueError:
                 try:
                     return datetime.strptime(fecha_str, "%d/%m/%Y")
-                except Exception:
-                    return pd.NaT  # Not a Time
+                except ValueError:
+                    return pd.NaT
 
         df['Fecha'] = df['FechaTexto'].apply(parse_fecha)
-
-        # Eliminar filas con fecha inválida
         df = df[df['Fecha'].notna()]
 
-        # Extraer información adicional
+        # Paso 5: Extraer información adicional
         df['Año'] = df['Fecha'].dt.year
-        df['Mes'] = df['Fecha'].dt.month_name(locale='es_ES.UTF-8')  # Mes en español
-        df['DiaSemana'] = df['Fecha'].dt.day_name(locale='es_ES.UTF-8')  # Día de la semana
+        df['Mes'] = df['Fecha'].dt.month_name(locale='es_ES.UTF-8')
+        df['DiaSemana'] = df['Fecha'].dt.day_name(locale='es_ES.UTF-8')
         df['Dia'] = df['Fecha'].dt.day
 
         return df[['ID', 'Nota', 'Categoría', 'Monto', 'FechaTexto', 'Fecha', 'Año', 'Mes', 'DiaSemana', 'Dia']]
 
     except Exception as e:
-        st.error(f"❌ No se pudieron cargar los gastos: {e}")
+        st.error(f"❌ Error al procesar los gastos: {e}")
         return pd.DataFrame()
         
 # Cargar datos
