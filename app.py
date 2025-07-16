@@ -1,116 +1,107 @@
 import streamlit as st
-import pandas as pd
 import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime
 
-# Configuración
-FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
+st.set_page_config(page_title="Análisis de Gastos", layout="wide")
 
-# Mapeo de meses y días en español
-MESES_ES = {
-    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
-    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
-}
-
-DIAS_ES = {
-    0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves",
-    4: "Viernes", 5: "Sábado", 6: "Domingo"
-}
-
-def get_dia_es(dia_num):
-    return DIAS_ES.get(dia_num, "Desconocido")
-
-
+# --- Función para traer los datos desde Firebase ---
 @st.cache_data
-def get_gastos():
-    try:
-        # Paso 1: Hacer la petición
-        response = requests.get(FIREBASE_URL)
-        
-        if response.status_code != 200:
-            st.error(f"❌ Código HTTP {response.status_code} - Error al conectarse a Firebase.")
-            return pd.DataFrame()
-
-        data = response.json()
-
-        # Paso 2: Validar que haya datos
-        if not isinstance(data, dict) or not data:
-            st.warning("⚠️ No hay datos disponibles en Firebase o formato inválido.")
-            return pd.DataFrame()
-
-        # Paso 3: Parsear datos
-        parsed = []
-        for key, value in data.items():
-            if not isinstance(value, dict):  # Saltar elementos corruptos
-                continue
-            parsed.append({
-                "ID": key,
-                "Nota": value.get("nota", "Sin nota"),
-                "Categoría": value.get("categoria", "Sin categoría"),
-                "Monto": float(value.get("monto", 0)),
-                "FechaTexto": value.get("fecha", "Sin fecha")
-            })
-
-        df = pd.DataFrame(parsed)
-
-        if df.empty:
-            st.warning("⚠️ Los datos descargados están vacíos.")
-            return df
-
-        # Paso 4: Parsear fechas
-        def parse_fecha(fecha_str):
-            try:
-                return datetime.strptime(fecha_str, "%d %b %Y, %I:%M %p")
-            except ValueError:
-                try:
-                    return datetime.strptime(fecha_str, "%d/%m/%Y")
-                except ValueError:
-                    return pd.NaT
-
-        df['Fecha'] = df['FechaTexto'].apply(parse_fecha)
-        df = df[df['Fecha'].notna()]
-
-        # Paso 5: Extraer información adicional
-        df['Año'] = df['Fecha'].dt.year
-        df['Mes'] = df['Fecha'].dt.month.map(MESES_ES)  # Mes en español (manual)
-        df['DiaSemana'] = df['Fecha'].dt.weekday.map(get_dia_es)  # Día de la semana en español
-        df['Dia'] = df['Fecha'].dt.day
-
-        return df[['ID', 'Nota', 'Categoría', 'Monto', 'FechaTexto', 'Fecha', 'Año', 'Mes', 'DiaSemana', 'Dia']]
-
-    except Exception as e:
-        st.error(f"❌ Error al procesar los gastos: {e}")
+def obtener_datos():
+    url = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
+    respuesta = requests.get(url)
+    datos = respuesta.json()
+    
+    if datos is None:
         return pd.DataFrame()
-                
-# Cargar datos
-df = get_gastos()
+    
+    # Convertir el JSON a DataFrame
+    registros = []
+    for id_gasto, gasto in datos.items():
+        registros.append({
+            "id": id_gasto,
+            "categoria": gasto.get("categoría", ""),
+            "fecha": gasto.get("fecha", ""),
+            "monto": float(gasto.get("monto", 0)),
+            "nota": gasto.get("nota", "")
+        })
+    
+    df = pd.DataFrame(registros)
+    
+    # Parsear fecha
+    try:
+        df["fecha"] = pd.to_datetime(df["fecha"], format="%d %b %Y, %I:%M %p")
+    except:
+        df["fecha"] = pd.to_datetime(df["fecha"], errors='coerce')
 
-if not df.empty:
-    # Mostrar tabla
-    st.subheader("📋 Lista de Gastos")
-    st.dataframe(df)
+    return df.dropna(subset=["fecha"])
 
-    # Análisis
-    st.subheader("📊 Análisis de Gastos")
-    total = df['Monto'].sum()
-    promedio = df['Monto'].mean()
-    maximo = df['Monto'].max()
-    minimo = df['Monto'].min()
+# --- Título ---
+st.title("📊 Análisis de Gastos Personales")
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total de gastos", f"${total:.2f}")
-    col2.metric("Promedio", f"${promedio:.2f}")
-    col3.metric("Máximo", f"${maximo:.2f}")
-    col4.metric("Mínimo", f"${minimo:.2f}")
+# --- Obtener datos ---
+df_gastos = obtener_datos()
 
-    # Gráfico por categorías
-    categoria_sum = df.groupby("Categoría")["Monto"].sum()
-    st.bar_chart(categoria_sum)
+if df_gastos.empty:
+    st.warning("No se encontraron datos en la base de datos.")
+    st.stop()
 
-    # Exportar a Excel
-    if st.button("📥 Exportar a Excel"):
-        df.to_excel("gastos_reporte.xlsx", index=False)
-        with open("gastos_reporte.xlsx", "rb") as f:
-            st.download_button("⬇️ Descargar Excel", f, file_name="gastos_reporte.xlsx")
-else:
-    st.warning("No hay datos disponibles.")
+# --- Filtros ---
+st.sidebar.header("Filtros")
+categorias = st.sidebar.multiselect("Categorías", options=df_gastos["categoria"].unique(), default=df_gastos["categoria"].unique())
+rango_fechas = st.sidebar.date_input("Rango de fechas", [df_gastos["fecha"].min(), df_gastos["fecha"].max()])
+
+# --- Aplicar filtros ---
+df_filtrado = df_gastos[
+    (df_gastos["categoria"].isin(categorias)) &
+    (df_gastos["fecha"].dt.date >= rango_fechas[0]) &
+    (df_gastos["fecha"].dt.date <= rango_fechas[1])
+]
+
+# --- Métricas clave ---
+col1, col2, col3 = st.columns(3)
+col1.metric("💰 Gasto total", f"${df_filtrado['monto'].sum():,.2f}")
+col2.metric("📆 Desde", rango_fechas[0].strftime("%d %b %Y"))
+col3.metric("📆 Hasta", rango_fechas[1].strftime("%d %b %Y"))
+
+st.markdown("---")
+
+# --- Gráfico por categoría ---
+st.subheader("Gasto por Categoría")
+df_categoria = df_filtrado.groupby("categoria")["monto"].sum().sort_values(ascending=False)
+
+fig1, ax1 = plt.subplots(figsize=(8, 5))
+sns.barplot(x=df_categoria.values, y=df_categoria.index, ax=ax1, palette="viridis")
+ax1.set_xlabel("Monto Total ($)")
+ax1.set_ylabel("Categoría")
+st.pyplot(fig1)
+
+# --- Gasto por día ---
+st.subheader("Gasto Diario")
+df_diario = df_filtrado.groupby(df_filtrado["fecha"].dt.date)["monto"].sum()
+
+fig2, ax2 = plt.subplots(figsize=(10, 4))
+df_diario.plot(kind="line", marker="o", ax=ax2)
+ax2.set_ylabel("Gasto ($)")
+ax2.set_xlabel("Fecha")
+ax2.grid(True)
+st.pyplot(fig2)
+
+# --- Tabla de gastos ---
+st.subheader("📄 Detalle de Gastos")
+st.dataframe(df_filtrado.sort_values(by="fecha", ascending=False), use_container_width=True)
+
+# --- Exportar CSV ---
+st.subheader("📥 Exportar Datos")
+
+csv = df_filtrado.to_csv(index=False).encode('utf-8')
+
+st.download_button(
+    label="⬇️ Descargar como CSV",
+    data=csv,
+    file_name='gastos_filtrados.csv',
+    mime='text/csv',
+    help="Exporta los datos filtrados como archivo CSV"
+)
