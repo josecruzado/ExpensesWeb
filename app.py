@@ -6,6 +6,21 @@ from datetime import datetime
 # Configuración
 FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
 
+# Mapeo de meses y días en español
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+
+DIAS_ES = {
+    0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves",
+    4: "Viernes", 5: "Sábado", 6: "Domingo"
+}
+
+def get_dia_es(dia_num):
+    return DIAS_ES.get(dia_num, "Desconocido")
+
+
 @st.cache_data
 def get_gastos():
     try:
@@ -57,8 +72,8 @@ def get_gastos():
 
         # Paso 5: Extraer información adicional
         df['Año'] = df['Fecha'].dt.year
-        df['Mes'] = df['Fecha'].dt.month_name(locale='es_ES.UTF-8')
-        df['DiaSemana'] = df['Fecha'].dt.day_name(locale='es_ES.UTF-8')
+        df['Mes'] = df['Fecha'].dt.month.map(MESES_ES)  # Mes en español (manual)
+        df['DiaSemana'] = df['Fecha'].dt.weekday.map(get_dia_es)  # Día de la semana en español
         df['Dia'] = df['Fecha'].dt.day
 
         return df[['ID', 'Nota', 'Categoría', 'Monto', 'FechaTexto', 'Fecha', 'Año', 'Mes', 'DiaSemana', 'Dia']]
@@ -66,7 +81,7 @@ def get_gastos():
     except Exception as e:
         st.error(f"❌ Error al procesar los gastos: {e}")
         return pd.DataFrame()
-        
+                
 # Cargar datos
 df = get_gastos()
 
