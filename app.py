@@ -132,9 +132,14 @@ if df.empty:
 return {}
 
 ```
+# Calcular días del período
+dias_periodo = (df['fecha'].max() - df['fecha'].min()).days
+if dias_periodo == 0:
+    dias_periodo = 1
+
 stats = {
     'total_gastos': df['monto'].sum(),
-    'promedio_diario': df['monto'].sum() / max(1, (df['fecha'].max() - df['fecha'].min()).days),
+    'promedio_diario': df['monto'].sum() / dias_periodo,
     'gasto_mayor': df['monto'].max(),
     'gasto_menor': df['monto'].min(),
     'categoria_mayor': df.groupby('categoria')['monto'].sum().idxmax(),
