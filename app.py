@@ -9,14 +9,14 @@ st.title("💼 Sistema de Control de Gastos")
 st.markdown("Conectado a Firebase Firestore mediante API REST")
 
 # Firebase config - desde secrets.toml o variables de entorno
-FIREBASE_URL = st.secrets["FIREBASE_URL"]
-API_KEY = st.secrets["API_KEY"]
+FIREBASE_URL = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
+#API_KEY = st.secrets["API_KEY"]
 
 # Función para obtener datos
 @st.cache_data
 def get_gastos():
     try:
-        response = requests.get(f"{FIREBASE_URL}?key={API_KEY}")
+        response = requests.get(f"{FIREBASE_URL}")
         if response.status_code != 200:
             st.error("Error al conectarse a Firebase.")
             return pd.DataFrame()
