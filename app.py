@@ -51,7 +51,7 @@ def obtener_datos():
         registros = []
         for key, gasto in datos.items():
             registros.append({
-                "Categoría": gasto.get("categoría", "Sin categoría"),
+                "Categoría": gasto.get("categoria", "Sin categoría"),
                 "Fecha": gasto.get("fecha", ""),
                 "Monto": float(gasto.get("monto", 0)),
                 "Nota": gasto.get("nota", "")
