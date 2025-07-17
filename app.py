@@ -32,17 +32,10 @@ st.markdown("""
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- iOS Icons usando los iconos existentes -->
-    <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="/assets/icon-512.png">
-    <link rel="apple-touch-icon" href="/assets/icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/assets/icon-512.png">
     
     <!-- Theme Color -->
     <meta name="theme-color" content="#2E86AB">
     <meta name="msapplication-TileColor" content="#2E86AB">
-    <meta name="msapplication-TileImage" content="/assets/icon-192.png">
 </head>
 
 <style>
