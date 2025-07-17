@@ -20,24 +20,6 @@ st.set_page_config(
 
 # --- PWA y optimizaciones iOS profesionales ---
 st.markdown("""
-<head>
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    
-    <!-- iOS Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Control Financiero">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#2E86AB">
-    <meta name="msapplication-TileColor" content="#2E86AB">
-</head>
-
 <style>
     /* === BASE Y RESET === */
     * {
