@@ -42,7 +42,7 @@ st.markdown("""
 @st.cache_data(ttl=300)
 def obtener_datos():
     try:
-        url = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json "
+        url = "https://gastos-d660a-default-rtdb.europe-west1.firebasedatabase.app/gastos_registrados.json"
         respuesta = requests.get(url)
         respuesta.raise_for_status()
         datos = respuesta.json()
